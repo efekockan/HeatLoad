@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify, render_template
 import os
-import subprocess
 import math
 import re
 import json
@@ -8,42 +7,12 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['CONVERTED_FOLDER'] = 'converted'
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
 
-# ODA File Converter path - update this to match your installation
-ODA_CONVERTER_PATH = r"C:\Program Files\ODA\ODAFileConverter\ODAFileConverter.exe"
-
-ALLOWED_EXTENSIONS = {'dwg', 'dxf'}
+ALLOWED_EXTENSIONS = {'dxf'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-def convert_dwg_to_dxf(dwg_path):
-    """Convert DWG to DXF using ODA File Converter"""
-    input_dir = os.path.dirname(os.path.abspath(dwg_path))
-    output_dir = os.path.abspath(app.config['CONVERTED_FOLDER'])
-    filename = os.path.basename(dwg_path)
-    
-    cmd = [
-        ODA_CONVERTER_PATH,
-        input_dir,
-        output_dir,
-        "ACAD2018",
-        "DXF",
-        "0",
-        "1",
-        filename
-    ]
-    
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-    
-    dxf_name = os.path.splitext(filename)[0] + '.dxf'
-    dxf_path = os.path.join(output_dir, dxf_name)
-    
-    if os.path.exists(dxf_path):
-        return dxf_path
-    raise Exception(f"Conversion failed. ODA output: {result.stdout} {result.stderr}")
 
 def parse_dxf(dxf_path, wall_layers, window_layers):
     """
@@ -304,21 +273,13 @@ def upload_file():
             return jsonify({'error': 'No file selected'}), 400
 
         if not allowed_file(file.filename):
-            return jsonify({'error': 'Only DWG or DXF files are allowed'}), 400
+            return jsonify({'error': 'Only DXF files are allowed. Please convert your DWG file to DXF first (e.g. using AutoCAD or an online converter).'}), 400
 
         filename = secure_filename(file.filename)
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
-        ext = filename.rsplit('.', 1)[1].lower()
-
-        if ext == 'dwg':
-            try:
-                dxf_path = convert_dwg_to_dxf(filepath)
-            except Exception as e:
-                return jsonify({'error': f'DWG conversion failed: {str(e)}. Make sure ODA File Converter is installed at: {ODA_CONVERTER_PATH}'}), 500
-        else:
-            dxf_path = filepath
+        dxf_path = filepath
 
         # Get layer names
         wall_layers = request.form.get('wall_layers', '').split(',')
@@ -419,5 +380,4 @@ def analyze_image():
 
 if __name__ == '__main__':
     os.makedirs('uploads', exist_ok=True)
-    os.makedirs('converted', exist_ok=True)
     app.run(debug=True, host='0.0.0.0', port=5000)

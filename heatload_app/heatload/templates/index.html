@@ -563,16 +563,17 @@
     <div class="section">
       <div class="section-header">
         <span class="section-title">Upload CAD File</span>
-        <span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim)">DWG or DXF</span>
+        <span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim)">DXF</span>
       </div>
       <div class="section-body">
         <div class="drop-zone" id="dropZone">
-          <input type="file" id="cadFile" accept=".dwg,.dxf" onchange="onFileSelected(this)">
+          <input type="file" id="cadFile" accept=".dxf" onchange="onFileSelected(this)">
           <span class="drop-icon">📐</span>
-          <div class="drop-title">DROP CAD FILE HERE</div>
-          <div class="drop-sub">DWG · DXF · Max 50MB</div>
+          <div class="drop-title">DROP DXF FILE HERE</div>
+          <div class="drop-sub">DXF · Max 50MB</div>
           <div class="file-selected" id="fileSelectedLabel"></div>
         </div>
+        <p class="hint" style="margin-top:8px">Have a DWG file? Convert it to DXF first using AutoCAD, FreeCAD, or a free online converter before uploading.</p>
 
         <div class="field-group mt-16">
           <div class="field">
@@ -780,13 +781,13 @@
     const wallLayers = document.getElementById('wallLayers').value;
     const windowLayers = document.getElementById('windowLayers').value;
 
-    if(!fileInput.files[0]) { setStatus('uploadStatus','Please select a DWG or DXF file.','error'); return; }
+    if(!fileInput.files[0]) { setStatus('uploadStatus','Please select a DXF file.','error'); return; }
     if(!wallLayers.trim()) { setStatus('uploadStatus','Please enter at least one wall layer name.','error'); return; }
 
     const btn = document.getElementById('uploadBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span><span>Parsing...</span>';
-    setStatus('uploadStatus','Converting and parsing file...','loading');
+    setStatus('uploadStatus','Parsing file...','loading');
 
     const fd = new FormData();
     fd.append('file', fileInput.files[0]);
