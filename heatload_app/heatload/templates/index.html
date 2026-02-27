@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HeatLoad — Thermal Calculator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0f11;
+    --surface: #161719;
+    --surface2: #1e2024;
+    --border: #2a2d33;
+    --accent: #e85d2f;
+    --accent2: #f5a623;
+    --text: #e8e9eb;
+    --text-dim: #6b7280;
+    --text-mid: #9ca3af;
+    --success: #22c55e;
+    --error: #ef4444;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+    --display: 'Bebas Neue', cursive;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(232,93,47,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(232,93,47,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
+  .logo-title {
+    font-family: var(--display);
+    font-size: 2.2rem;
+    letter-spacing: 3px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .header-badge {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 4px 10px;
+    letter-spacing: 1px;
+  }
+
+  /* Steps */
+  .steps-nav {
+    display: flex;
+    gap: 0;
+    margin: 32px 0 0;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .step-tab {
+    flex: 1;
+    padding: 14px 16px;
+    border: none;
+    background: var(--surface);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+  }
+
+  .step-tab:last-child { border-right: none; }
+  .step-tab:hover { color: var(--text); background: var(--surface2); }
+  .step-tab.active {
+    background: var(--accent);
+    color: white;
+    font-weight: 500;
+  }
+  .step-tab.completed { color: var(--success); }
+  .step-tab.completed::after {
+    content: '✓';
+    margin-left: auto;
+  }
+
+  .step-num {
+    font-size: 0.6rem;
+    opacity: 0.6;
+  }
+
+  /* Panels */
+  .panel {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Section */
+  .section {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    margin-top: 20px;
+    overflow: hidden;
+  }
+
+  .section-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-mid);
+  }
+
+  .section-body { padding: 20px; }
+
+  /* Form elements */
+  .field-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .field-group.three { grid-template-columns: 1fr 1fr 1fr; }
+  .field-group.single { grid-template-columns: 1fr; }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  input[type="text"],
+  input[type="number"],
+  textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input:focus, textarea:focus {
+    border-color: var(--accent);
+  }
+
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .hint {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    color: var(--text-dim);
+    line-height: 1.5;
+    margin-top: 2px;
+  }
+
+  /* File drop zone */
+  .drop-zone {
+    border: 2px dashed var(--border);
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(232,93,47,0.03);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    font-size: 2.5rem;
+    margin-bottom: 12px;
+    display: block;
+  }
+
+  .drop-title {
+    font-family: var(--display);
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: var(--text-mid);
+    margin-bottom: 6px;
+  }
+
+  .drop-sub {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .file-selected {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    color: var(--accent2);
+    margin-top: 10px;
+  }
+
+  /* Buttons */
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 12px 24px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #d44d22; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text-mid);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--text); }
+
+  .btn-success {
+    background: var(--success);
+    color: #0a1a0a;
+  }
+
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 16px;
+  }
+
+  /* Status messages */
+  .status {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 10px 14px;
+    border-left: 3px solid;
+    margin-top: 12px;
+  }
+  .status.info { border-color: var(--accent2); background: rgba(245,166,35,0.06); color: var(--accent2); }
+  .status.success { border-color: var(--success); background: rgba(34,197,94,0.06); color: var(--success); }
+  .status.error { border-color: var(--error); background: rgba(239,68,68,0.06); color: var(--error); }
+  .status.loading { border-color: var(--text-dim); background: rgba(107,114,128,0.06); color: var(--text-dim); }
+
+  /* Room cards */
+  .rooms-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .room-card {
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    padding: 14px;
+  }
+
+  .room-card-name {
+    font-family: var(--display);
+    font-size: 1rem;
+    letter-spacing: 1px;
+    color: var(--accent2);
+    margin-bottom: 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .room-stat {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    padding: 2px 0;
+  }
+
+  .room-stat span:last-child { color: var(--text-mid); }
+
+  /* Results table */
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    margin-top: 16px;
+  }
+
+  .results-table th {
+    text-align: left;
+    padding: 10px 14px;
+    background: var(--surface2);
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .results-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(42,45,51,0.5);
+    color: var(--text-mid);
+  }
+
+  .results-table tr:hover td { background: var(--surface2); }
+
+  .wattage-cell {
+    color: var(--accent) !important;
+    font-weight: 500;
+    font-size: 0.85rem !important;
+  }
+
+  .wattage-bar {
+    height: 3px;
+    background: var(--accent);
+    margin-top: 3px;
+    transition: width 0.5s ease;
+  }
+
+  /* Total box */
+  .total-box {
+    border: 1px solid var(--accent);
+    background: rgba(232,93,47,0.06);
+    padding: 20px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+  }
+
+  .total-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .total-value {
+    font-family: var(--display);
+    font-size: 2.8rem;
+    color: var(--accent);
+    letter-spacing: 2px;
+  }
+
+  .total-unit {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-left: 6px;
+  }
+
+  /* Formula preview */
+  .formula-display {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--accent2);
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  /* Variables list */
+  .var-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .var-chip {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--accent2);
+    letter-spacing: 0.5px;
+  }
+
+  /* Spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Image upload smaller */
+  .img-drop {
+    border: 1px dashed var(--border);
+    padding: 20px;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s;
+  }
+  .img-drop:hover { border-color: var(--accent2); }
+  .img-drop input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .img-drop p { font-family: var(--mono); font-size: 0.65rem; color: var(--text-dim); letter-spacing: 1px; }
+
+  #screenshotPreview {
+    max-width: 100%;
+    max-height: 300px;
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    display: none;
+  }
+
+  /* Responsive */
+  @media(max-width: 640px) {
+    .field-group, .field-group.three { grid-template-columns: 1fr; }
+    .steps-nav { flex-direction: column; }
+    .step-tab { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  .mt-0 { margin-top: 0; }
+  .mt-8 { margin-top: 8px; }
+  .mt-16 { margin-top: 16px; }
+  .flex { display: flex; }
+  .gap-8 { gap: 8px; }
+  .items-center { align-items: center; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <span class="logo-title">HEATLOAD</span>
+      <span class="logo-sub">Thermal Wattage Calculator</span>
+    </div>
+    <span class="header-badge">v1.0 · LOCAL</span>
+  </header>
+
+  <!-- Step tabs -->
+  <div class="steps-nav">
+    <button class="step-tab active" onclick="goToStep(1)" id="tab1">
+      <span class="step-num">01</span> Upload Drawing
+    </button>
+    <button class="step-tab" onclick="goToStep(2)" id="tab2">
+      <span class="step-num">02</span> Configure
+    </button>
+    <button class="step-tab" onclick="goToStep(3)" id="tab3">
+      <span class="step-num">03</span> Formula
+    </button>
+    <button class="step-tab" onclick="goToStep(4)" id="tab4">
+      <span class="step-num">04</span> Results
+    </button>
+  </div>
+
+  <!-- ===================== STEP 1: UPLOAD ===================== -->
+  <div class="panel active" id="panel1">
+
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Upload CAD File</span>
+        <span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim)">DWG or DXF</span>
+      </div>
+      <div class="section-body">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="cadFile" accept=".dwg,.dxf" onchange="onFileSelected(this)">
+          <span class="drop-icon">📐</span>
+          <div class="drop-title">DROP CAD FILE HERE</div>
+          <div class="drop-sub">DWG · DXF · Max 50MB</div>
+          <div class="file-selected" id="fileSelectedLabel"></div>
+        </div>
+
+        <div class="field-group mt-16">
+          <div class="field">
+            <label>Wall Layer Name(s)</label>
+            <input type="text" id="wallLayers" placeholder="e.g. WALLS, A-WALL, MIMARI">
+            <span class="hint">Comma-separated. Walls will be extracted from these layers.</span>
+          </div>
+          <div class="field">
+            <label>Window Layer Name(s)</label>
+            <input type="text" id="windowLayers" placeholder="e.g. WINDOWS, A-WINDOW">
+            <span class="hint">Comma-separated. Leave blank if windows are on the same layers as walls.</span>
+          </div>
+        </div>
+
+        <div id="uploadStatus"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="uploadFile()" id="uploadBtn">
+            <span>Parse Drawing</span>
+          </button>
+          <button class="btn btn-secondary" onclick="goToStep(2)">Skip → Manual Entry</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screenshot upload -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Reference Screenshot</span>
+        <span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim)">Optional</span>
+      </div>
+      <div class="section-body">
+        <p style="font-family:var(--sans);font-size:0.8rem;color:var(--text-dim);margin-bottom:12px;">
+          If layer names are unclear, upload a screenshot of the drawing to visually confirm room labels and layers.
+        </p>
+        <div class="img-drop">
+          <input type="file" id="screenshotFile" accept="image/*" onchange="previewScreenshot(this)">
+          <p>📷 CLICK TO UPLOAD SCREENSHOT</p>
+        </div>
+        <img id="screenshotPreview" src="" alt="Screenshot preview">
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== STEP 2: CONFIGURE ===================== -->
+  <div class="panel" id="panel2">
+
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Project Information</span>
+      </div>
+      <div class="section-body">
+        <div class="field-group three">
+          <div class="field">
+            <label>City / Location</label>
+            <input type="text" id="city" placeholder="e.g. Istanbul, Ankara">
+          </div>
+          <div class="field">
+            <label>Outside Temperature (°C)</label>
+            <input type="number" id="T_outside" value="-5" step="0.5">
+          </div>
+          <div class="field">
+            <label>Inside Temperature (°C)</label>
+            <input type="number" id="T_inside" value="21" step="0.5">
+          </div>
+        </div>
+        <div class="field-group three">
+          <div class="field">
+            <label>Wall Height (m)</label>
+            <input type="number" id="wall_height" value="2.8" step="0.1">
+          </div>
+          <div class="field">
+            <label>U-Value — Wall (W/m²K)</label>
+            <input type="number" id="U_wall" value="0.3" step="0.01">
+          </div>
+          <div class="field">
+            <label>U-Value — Window (W/m²K)</label>
+            <input type="number" id="U_window" value="1.4" step="0.01">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manual room entry -->
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Rooms</span>
+        <button class="btn btn-secondary" onclick="addManualRoom()" style="padding:6px 14px;font-size:0.65rem;">+ Add Room</button>
+      </div>
+      <div class="section-body">
+        <p style="font-family:var(--sans);font-size:0.8rem;color:var(--text-dim);margin-bottom:12px;">
+          Rooms parsed from your drawing appear below. You can also add rooms manually.
+        </p>
+        <div id="roomsContainer">
+          <div class="status info" id="noRoomsMsg">No drawing parsed yet. Add rooms manually or go back and upload a file.</div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="goToStep(3)">Next → Formula</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== STEP 3: FORMULA ===================== -->
+  <div class="panel" id="panel3">
+
+    <div class="section">
+      <div class="section-header">
+        <span class="section-title">Heat Load Formula</span>
+      </div>
+      <div class="section-body">
+        <div class="field">
+          <label>Enter Your Formula</label>
+          <textarea id="formula" rows="3" placeholder="e.g. (wall_area * U_wall * delta_T) + (window_area * U_window * delta_T)"></textarea>
+          <span class="hint">Use these built-in variables — or just type any expression using them.</span>
+        </div>
+
+        <div class="var-chips">
+          <span class="var-chip" onclick="insertVar('wall_length')" title="Net wall length (m)">wall_length</span>
+          <span class="var-chip" onclick="insertVar('window_length')" title="Window length (m)">window_length</span>
+          <span class="var-chip" onclick="insertVar('wall_area')" title="wall_length × wall_height">wall_area</span>
+          <span class="var-chip" onclick="insertVar('window_area')" title="window_length × wall_height">window_area</span>
+          <span class="var-chip" onclick="insertVar('wall_height')">wall_height</span>
+          <span class="var-chip" onclick="insertVar('U_wall')">U_wall</span>
+          <span class="var-chip" onclick="insertVar('U_window')">U_window</span>
+          <span class="var-chip" onclick="insertVar('delta_T')">delta_T</span>
+          <span class="var-chip" onclick="insertVar('T_inside')">T_inside</span>
+          <span class="var-chip" onclick="insertVar('T_outside')">T_outside</span>
+        </div>
+
+        <div class="formula-display" id="formulaPreview">— enter formula above —</div>
+        <p style="font-family:var(--mono);font-size:0.6rem;color:var(--text-dim);margin-top:6px;">
+          Click any variable chip above to insert it at cursor. Supports +, -, *, /, (, ).
+        </p>
+
+        <!-- Extra custom variables -->
+        <div class="field mt-16">
+          <label>Additional Custom Variables (optional)</label>
+          <textarea id="extraVars" rows="2" placeholder='{"safety_factor": 1.1, "ventilation_loss": 50}'></textarea>
+          <span class="hint">JSON format. These will be available in your formula.</span>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="calculate()" id="calcBtn">
+            Calculate Wattage
+          </button>
+          <button class="btn btn-secondary" onclick="goToStep(2)">← Back</button>
+        </div>
+        <div id="formulaStatus"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===================== STEP 4: RESULTS ===================== -->
+  <div class="panel" id="panel4">
+
+    <div id="resultsContent">
+      <div class="status info">No results yet. Complete steps 1–3 first.</div>
+    </div>
+
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  let parsedRooms = {};
+  let manualRooms = {};
+  let currentStep = 1;
+
+  function goToStep(n) {
+    document.querySelectorAll('.panel').forEach((p,i) => {
+      p.classList.toggle('active', i+1 === n);
+    });
+    document.querySelectorAll('.step-tab').forEach((t,i) => {
+      t.classList.toggle('active', i+1 === n);
+    });
+    currentStep = n;
+  }
+
+  // Drag & drop
+  const dz = document.getElementById('dropZone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault();
+    dz.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if(f) { document.getElementById('cadFile').files = e.dataTransfer.files; onFileSelected({files:[f]}); }
+  });
+
+  function onFileSelected(input) {
+    const f = input.files[0];
+    if(f) document.getElementById('fileSelectedLabel').textContent = '📎 ' + f.name;
+  }
+
+  function setStatus(id, msg, type='info') {
+    const el = document.getElementById(id);
+    el.innerHTML = `<div class="status ${type}">${msg}</div>`;
+  }
+
+  async function uploadFile() {
+    const fileInput = document.getElementById('cadFile');
+    const wallLayers = document.getElementById('wallLayers').value;
+    const windowLayers = document.getElementById('windowLayers').value;
+
+    if(!fileInput.files[0]) { setStatus('uploadStatus','Please select a DWG or DXF file.','error'); return; }
+    if(!wallLayers.trim()) { setStatus('uploadStatus','Please enter at least one wall layer name.','error'); return; }
+
+    const btn = document.getElementById('uploadBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span><span>Parsing...</span>';
+    setStatus('uploadStatus','Converting and parsing file...','loading');
+
+    const fd = new FormData();
+    fd.append('file', fileInput.files[0]);
+    fd.append('wall_layers', wallLayers);
+    fd.append('window_layers', windowLayers);
+
+    try {
+      const res = await fetch('/upload', { method:'POST', body: fd });
+      const data = await res.json();
+
+      if(data.error) {
+        setStatus('uploadStatus', data.error, 'error');
+      } else {
+        parsedRooms = data.rooms;
+        setStatus('uploadStatus', `✓ Parsed successfully. Found ${Object.keys(data.rooms).length} room(s).`, 'success');
+        renderRooms();
+        document.getElementById('tab1').classList.add('completed');
+        setTimeout(() => goToStep(2), 800);
+      }
+    } catch(e) {
+      setStatus('uploadStatus', 'Request failed: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Parse Drawing</span>';
+    }
+  }
+
+  function renderRooms() {
+    const container = document.getElementById('roomsContainer');
+    const allRooms = { ...parsedRooms, ...manualRooms };
+    document.getElementById('noRoomsMsg') && (document.getElementById('noRoomsMsg').style.display = Object.keys(allRooms).length ? 'none' : 'block');
+
+    const grid = document.createElement('div');
+    grid.className = 'rooms-grid';
+
+    for(const [name, room] of Object.entries(allRooms)) {
+      const card = document.createElement('div');
+      card.className = 'room-card';
+      const wallLenM = (room.walls.reduce((a,b)=>a+b,0)/1000).toFixed(2);
+      const winLenM = (room.windows.reduce((a,b)=>a+b,0)/1000).toFixed(2);
+      card.innerHTML = `
+        <div class="room-card-name">${name}</div>
+        <div class="room-stat"><span>WALL SEGMENTS</span><span>${room.walls.length}</span></div>
+        <div class="room-stat"><span>TOTAL WALL (m)</span><span>${wallLenM}</span></div>
+        <div class="room-stat"><span>WINDOWS</span><span>${room.windows.length}</span></div>
+        <div class="room-stat"><span>TOTAL WINDOW (m)</span><span>${winLenM}</span></div>
+      `;
+      grid.appendChild(card);
+    }
+
+    // Clear and append
+    const existing = container.querySelector('.rooms-grid');
+    if(existing) existing.remove();
+    if(Object.keys(allRooms).length) container.appendChild(grid);
+  }
+
+  function addManualRoom() {
+    const name = prompt('Room name:');
+    if(!name) return;
+    const walls = prompt('Total wall length (meters, comma-separated or single total):');
+    const windows = prompt('Total window length (meters, comma-separated or single total):');
+
+    const parseLen = s => {
+      if(!s || !s.trim()) return [];
+      return s.split(',').map(v => parseFloat(v.trim()) * 1000).filter(v => !isNaN(v));
+    };
+
+    manualRooms[name] = {
+      walls: parseLen(walls),
+      windows: parseLen(windows)
+    };
+    renderRooms();
+    document.getElementById('noRoomsMsg') && (document.getElementById('noRoomsMsg').style.display = 'none');
+  }
+
+  function insertVar(varName) {
+    const ta = document.getElementById('formula');
+    const pos = ta.selectionStart;
+    const before = ta.value.substring(0, pos);
+    const after = ta.value.substring(ta.selectionEnd);
+    ta.value = before + varName + after;
+    ta.focus();
+    ta.setSelectionRange(pos + varName.length, pos + varName.length);
+    updateFormulaPreview();
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('formula').addEventListener('input', updateFormulaPreview);
+  });
+
+  function updateFormulaPreview() {
+    const f = document.getElementById('formula').value.trim();
+    document.getElementById('formulaPreview').textContent = f ? 'Q = ' + f : '— enter formula above —';
+  }
+
+  function previewScreenshot(input) {
+    const f = input.files[0];
+    if(!f) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById('screenshotPreview');
+      img.src = e.target.result;
+      img.style.display = 'block';
+    };
+    reader.readAsDataURL(f);
+  }
+
+  async function calculate() {
+    const formula = document.getElementById('formula').value.trim();
+    if(!formula) { setStatus('formulaStatus','Please enter a formula.','error'); return; }
+
+    const allRooms = { ...parsedRooms, ...manualRooms };
+    if(!Object.keys(allRooms).length) { setStatus('formulaStatus','No rooms found. Go back and upload a file or add rooms manually.','error'); return; }
+
+    // Gather params
+    const params = {
+      T_inside: document.getElementById('T_inside').value,
+      T_outside: document.getElementById('T_outside').value,
+      wall_height: document.getElementById('wall_height').value,
+      U_wall: document.getElementById('U_wall').value,
+      U_window: document.getElementById('U_window').value,
+    };
+
+    // Extra vars
+    const extraRaw = document.getElementById('extraVars').value.trim();
+    if(extraRaw) {
+      try {
+        const extra = JSON.parse(extraRaw);
+        Object.assign(params, extra);
+      } catch(e) {
+        setStatus('formulaStatus','Invalid JSON in custom variables.','error');
+        return;
+      }
+    }
+
+    const btn = document.getElementById('calcBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span><span>Calculating...</span>';
+    setStatus('formulaStatus','','info');
+
+    try {
+      const res = await fetch('/calculate', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ rooms: allRooms, formula, params })
+      });
+      const data = await res.json();
+
+      if(data.error) {
+        setStatus('formulaStatus', data.error, 'error');
+      } else {
+        renderResults(data);
+        document.getElementById('tab3').classList.add('completed');
+        goToStep(4);
+      }
+    } catch(e) {
+      setStatus('formulaStatus','Request failed: '+e.message,'error');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span>Calculate Wattage</span>';
+    }
+  }
+
+  function renderResults(data) {
+    const city = document.getElementById('city').value || 'N/A';
+    const maxW = Math.max(...data.results.map(r => r.wattage));
+    const container = document.getElementById('resultsContent');
+
+    let html = `
+      <div class="section mt-0">
+        <div class="section-header">
+          <span class="section-title">Results — ${city}</span>
+          <span style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim)">ΔT = ${data.delta_T}°C</span>
+        </div>
+        <div class="section-body">
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Room</th>
+                <th>Wall Length (m)</th>
+                <th>Window Length (m)</th>
+                <th>Wattage (W)</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    for(const r of data.results) {
+      const barW = maxW > 0 ? (r.wattage / maxW * 100).toFixed(1) : 0;
+      html += `
+        <tr>
+          <td style="color:var(--text)">${r.room}</td>
+          <td>${r.total_wall_length}</td>
+          <td>${r.total_window_length}</td>
+          <td>
+            <span class="wattage-cell">${r.wattage.toLocaleString()} W</span>
+            <div class="wattage-bar" style="width:${barW}%"></div>
+          </td>
+        </tr>
+      `;
+    }
+
+    html += `
+            </tbody>
+          </table>
+
+          <div class="total-box">
+            <div>
+              <div class="total-label">Total Building Heat Load</div>
+              <div style="font-family:var(--mono);font-size:0.65rem;color:var(--text-dim);margin-top:4px;">${data.results.length} rooms · ΔT ${data.delta_T}°C · ${city}</div>
+            </div>
+            <div style="display:flex;align-items:baseline;gap:4px">
+              <span class="total-value">${data.total_wattage.toLocaleString()}</span>
+              <span class="total-unit">W</span>
+              <span class="total-unit" style="margin-left:8px">(${(data.total_wattage/1000).toFixed(2)} kW)</span>
+            </div>
+          </div>
+
+          <div class="btn-row" style="margin-top:20px">
+            <button class="btn btn-secondary" onclick="exportCSV()" >⬇ Export CSV</button>
+            <button class="btn btn-secondary" onclick="goToStep(1)">← New Calculation</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+    window._lastResults = data;
+  }
+
+  function exportCSV() {
+    const data = window._lastResults;
+    if(!data) return;
+    const city = document.getElementById('city').value || 'N/A';
+    let csv = 'Room,Wall Length (m),Window Length (m),Wattage (W)\n';
+    for(const r of data.results) {
+      csv += `"${r.room}",${r.total_wall_length},${r.total_window_length},${r.wattage}\n`;
+    }
+    csv += `\nTOTAL,,,${data.total_wattage}\n`;
+    csv += `City:,${city},,\nDelta T (C):,${data.delta_T},,\n`;
+
+    const blob = new Blob([csv], {type:'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `heatload_${city.replace(/\s/g,'_')}.csv`;
+    a.click();
+  }
+</script>
+</body>
+</html>
